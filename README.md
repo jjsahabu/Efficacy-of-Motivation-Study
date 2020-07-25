@@ -1,8 +1,8 @@
 # Efficacy of Motivation Study
 
 ## Task
-[x] Create a website to host A/B Testing of moentary incentive with payouts to individuals or to charity
-[x] Create regression analytic to determine whether test has statistical significance
+[x] Create a website to host A/B Testing of moentary incentive with payouts to individuals or to charity <br>
+[x] Create regression analytic to determine whether test has statistical significance <br>
 [x] Produce report of findings
 
 ## Skills Used
@@ -11,7 +11,7 @@
 - Causal Inference and Experimental Design Knowledge
 
 ## Collaborators
-Isaac Chau: https://github.com/ikchau/
+Isaac Chau: https://github.com/ikchau/ <br>
 Emma Russon: https://www.linkedin.com/in/emmarusson/
 
 ## Findings
