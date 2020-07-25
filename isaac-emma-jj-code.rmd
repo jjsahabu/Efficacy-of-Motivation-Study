@@ -1,0 +1,213 @@
+---
+title: "Code for Results and Analytics"
+authors: "Isaac Chau, Emma Russon, Jeremiah (JJ) Sahabu"
+output: pdf_document
+---
+
+```{r}
+library(data.table)
+library(dplyr)
+library(plotrix)
+library(stargazer)
+library(ggplot2)
+library(sandwich)
+library(car)
+```
+
+```{r}
+# load data
+data <- read.csv('experimental_data.csv')
+data <- data.table(data)
+```
+
+```{r}
+# add complete column
+data$complete <- ifelse(data$clicks>=400, 1, 0)
+
+# drop unnecessary columns 
+data <- subset(data, select=c(id, clicks, treat, seconds, Monkey, complete))
+
+# change name of taps and hour column 
+colnames(data)[c(2, 5)] <- c("taps","hour") 
+
+head(data)
+```
+
+```{r}
+# Figure 4: Distribution of spacebar tap counts from subjects in the Altruistic treatment group and the Egocentric treatment group
+
+hist(data[treat=='ch', taps], main="Histogram of Spacebar Taps from Subjects in Altruistic Group", xlab="Number of Spacebar Taps")
+
+hist(data[treat=='si', taps], main="Histogram of Spacebar Taps from Subjects in Egocentric Group", xlab="Number of Spacebar Taps")
+```
+
+```{r}
+# Figure 4: Distribution of completion rate for each treatment group
+
+comp_data <- data.frame(
+  name = c('Egocentric', 'Altruistic'),
+  value = c(mean(data[treat=='si', complete]), mean(data[treat=='ch', complete])),
+  sd = c(std.error(data[treat=='si', complete]), std.error(data[treat=='ch', complete])))
+  
+ggplot(comp_data) +
+    geom_bar( aes(x=name, y=value), stat="identity", alpha=0.7, width=0.5) +
+    geom_errorbar( aes(x=name, ymin=value-sd, ymax=value+sd), alpha=0.9, width=0.1) + 
+    ylab("Proportion of Task Completions")+
+    xlab("Treatment Group") +
+    theme_bw()
+```
+
+```{r}
+# Figure 5: Distribution of the number of completions for each observed hour in the Altruistic treatment group and the Egocentric treatment group
+
+ch_hours <- data[treat=='ch'] %>% 
+              group_by(hour) %>% 
+              summarise(completions = sum(complete))
+
+si_hours <- data[treat=='si'] %>% 
+              group_by(hour) %>% 
+              summarise(completions = sum(complete))
+
+barplot(height=ch_hours$completions, names.arg=ch_hours$hour, main="Number of Completions for Each Observed Hour in Altruistic Group", xlab="Observed Hour", ylab="Completions")
+
+barplot(height=si_hours$completions, names.arg=si_hours$hour, main="Number of Completions for Each Observed Hour in Egocentric Group", xlab="Observed Hour", ylab="Completions")
+```
+
+```{r}
+# Figure 6: Distribution of the amount of time in seconds spent on the treatment website from subjects in the Altruistic treatment group and the Egocentric treatment group
+
+hist(data[treat=='ch', seconds], main="Histogram of Seconds on Website from Subjects in Altruistic Group", xlab="Seconds on Website", breaks=50)
+
+hist(data[treat=='si', seconds], main="Histogram of Seconds on Website from Subjects in Egocentric Group", xlab="Seconds on Website", breaks=50)
+```
+
+```{r}
+# difference in means test for completion rate
+t.test(data[treat=='si', complete], data[treat=='ch', complete])
+```
+
+```{r}
+# Figure 7: models and regression results for completion rate
+model1 <- lm(data$complete ~ factor(data$treat))
+model2 <- lm(data$complete ~ factor(data$treat) + factor(data$hour))
+
+stargazer(model1, model2, type="text",
+ dep.var.labels=c("Completion Rate"),
+ covariate.labels=c("Treatment","1AM","3AM", "11AM","12PM", "1PM", "2PM", "3PM", "4PM", "5PM", "6PM", "7PM", "8PM", "9PM", "10PM", "11PM"),
+ report=('vcsp'),
+ out="models.txt",
+ model.numbers = F)
+
+stargazer(model1, model2, type="text",
+ dep.var.labels=c("Completion Rate"),
+ covariate.labels=c("Treatment"),
+ report=('vcsp'),
+ omit='hour', 
+ column.labels =c('Base Model (1)', 'All Covariates (2)'),
+ model.numbers = F)
+```
+
+```{r}
+# Figure 8: models and regression results for completion rate
+model3 <- lm(data$taps ~ factor(data$treat))
+model4 <- lm(data$taps ~ factor(data$treat) + factor(data$hour))
+
+stargazer(model3, model4, type="text",
+ dep.var.labels=c("Effort"),
+ covariate.labels=c("Treatment","1AM","3AM", "11AM","12PM", "1PM", "2PM", "3PM", "4PM", "5PM", "6PM", "7PM", "8PM", "9PM", "10PM", "11PM"),
+ report=('vcsp'),
+ out="models2.txt",
+ model.numbers = F)
+
+stargazer(model3, model4, type="text",
+ dep.var.labels=c("Effort"),
+ covariate.labels=c("Treatment"),
+ report=('vcsp'),
+ omit='hour', 
+ column.labels =c('Base Model (3)', 'All Covariates (4)'),
+ model.numbers = F)
+```
+
+```{r}
+# Figure 9: models and regression results for completion rate
+model5 <- lm(log(data$seconds) ~ factor(data$treat))
+model6 <- lm(log(data$seconds) ~ factor(data$treat) + factor(data$hour))
+
+stargazer(model5, model6, type="text",
+ dep.var.labels=c("log(Time Elapsed)"),
+ covariate.labels=c("Treatment","1AM","3AM", "11AM","12PM", "1PM", "2PM", "3PM", "4PM", "5PM", "6PM", "7PM", "8PM", "9PM", "10PM", "11PM"),
+ report=('vcsp'),
+ out="models3.txt",
+ model.numbers = F)
+
+stargazer(model5, model6, type="text",
+ dep.var.labels=c("log(Time Elapsed)"),
+ covariate.labels=c("Treatment"),
+ report=('vcsp'),
+ omit='hour', 
+ column.labels =c('Base Model (5)', 'All Covariates (6)'),
+ model.numbers = F)
+```
+
+```{r}
+# Appendix E1: Levene's test for completion rate models
+model1 <- lm(data$complete ~ factor(data$treat))
+model2 <- lm(data$complete ~ factor(data$treat) * factor(data$hour))
+
+leveneTest(model1)
+leveneTest(model2)
+```
+
+```{r}
+# Appendix E2: Levene's test for completion rate models
+model3 <- lm(data$taps ~ factor(data$treat))
+model4 <- lm(data$taps ~ factor(data$treat) * factor(data$hour))
+
+leveneTest(model3)
+leveneTest(model4)
+```
+
+```{r}
+# Appendix E3: Levene's test for completion rate models
+model5 <- lm(log(data$seconds) ~ factor(data$treat))
+model6 <- lm(log(data$seconds) ~ factor(data$treat) * factor(data$hour))
+
+leveneTest(model5)
+leveneTest(model6)
+```
+
+```{r}
+# completion raw #s
+si_c = sum(data[treat=='si', complete])
+si_l = length(data[treat=='si', complete])
+ch_c = sum(data[treat=='ch', complete])
+ch_l = length(data[treat=='ch', complete])
+c(si_c, si_l, si_c/si_l, ch_c, ch_l, ch_c/ch_l)
+```
+
+```{r}
+# data before share
+pre_share <- data[c(1:106, 226:318)]
+
+# data after share
+post_share <- data[c(107:225, 319:443)] 
+
+# difference in means test for completion before and after share of altruistic treatment page
+t.test(pre_share[treat=='ch', complete], post_share[treat=='ch', complete])
+```
+
+```{r}
+# completion pre-share #s
+si_cp = sum(pre_share[treat=='si', complete])
+si_lp = length(pre_share[treat=='si', complete])
+ch_cp = sum(pre_share[treat=='ch', complete])
+ch_lp = length(pre_share[treat=='ch', complete])
+c(si_cp, si_lp, si_cp/si_lp, ch_cp, ch_lp, ch_cp/ch_lp)
+```
+
+```{r}
+# extra exploration on working hours -- did not include in report
+working_hours <- ifelse((data$hour >= 8) & (data$hour <= 17), 1, 0)
+
+summary(lm(data$complete ~ factor(data$treat) + working_hours))
+```
